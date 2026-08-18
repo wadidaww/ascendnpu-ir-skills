@@ -14,6 +14,8 @@ for the upstream source or its documentation.
   owning CMake targets.
 - `skills/dialects-and-passes.md` — dialect/pass implementation and registration
   playbooks.
+- `skills/reference-catalog.md` — upstream submodules, tools, conversion passes,
+  pipelines, and test feature gates.
 - `skills/build-test-debug.md` — build configuration, lit/unit/integration tests,
   diagnostics, and debugging workflows.
 - `skills/llvm-mlir-practices.md` — LLVM/MLIR conventions and review checklist.
