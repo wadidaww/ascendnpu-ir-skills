@@ -8,7 +8,7 @@ alwaysApply: false
 
 Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
 
-## 1) Repository mental model
+## 1) Repository mental model (owner map)
 
 - `bishengir/include/bishengir/**`: dialect/conversion/pass declarations, `.td` TableGen defs, public APIs.
 - `bishengir/lib/**`: implementations of dialects, conversions, passes, transforms, tools internals.
@@ -24,6 +24,7 @@ Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
 - Entry stack: Torch-MLIR / Triton / TileLang / framework IR.
 - Mid-level: Linalg/Tensor + `HFusion` (fusion, scheduling, hardware-aware optimizations).
 - Low-level: `HIVM` (instruction-level mapping, memory/pipeline/sync control).
+- Runtime/launch metadata: `HACC`, `Annotation`, `Scope`, `Symbol`.
 - Backend handoff: low-level IR to downstream LLVM/lower binary generation path.
 
 ## 3) Where to change code by task
@@ -43,7 +44,16 @@ Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
   - Follow CustomOp model in HIVM path and related lowering/attributes handling
   - Validate pass interactions (flatten, alignment, memory planning, layout transforms)
 
-## 4) Build, test, and debug workflow
+## 4) Default implementation workflow
+
+1. Classify issue type:
+   - op/dialect, conversion, pass, CLI option, python binding, docs.
+2. Trace owning files in include/lib/tools/test/docs.
+3. Implement minimal coherent change (declaration + implementation + registration + tests).
+4. Validate with narrow tests first, then broader checks.
+5. Update docs for user-visible behavior/option changes.
+
+## 5) Build, test, and debug workflow
 
 1. Initialize dependencies:
    - `git submodule update --init --recursive`
@@ -59,7 +69,7 @@ Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
 6. IR inspection:
    - `bishengir-compile ... --bishengir-print-ir-before=<pass> --bishengir-print-ir-after=<pass>`
 
-## 5) Feature-specific guidance
+## 6) Feature-specific guidance
 
 - HFusion AutoSchedule:
   - Focus on `lib/Dialect/HFusion/Transforms/AutoSchedule/**`
@@ -69,9 +79,15 @@ Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
 - Debug instrumentation:
   - HFusion `print` and HIVM `debug` ops are first-line diagnostics for kernel issues.
 
-## 6) Documentation and quality gates
+## 7) Documentation and quality gates
 
 - Keep docs aligned with behavior changes:
   - Architecture/user options/developer guide pages under `docs/source/en/**` (and zh counterpart if needed).
 - Preserve LLVM style and existing conventions (`.clang-format`, `.clang-tidy`).
 - Keep changes scoped: avoid unrelated refactors in PRs.
+
+## 8) Companion specialized rules
+
+- `ascendnpu-ir-dialects-conversions.mdc`
+- `ascendnpu-ir-testing-debug.mdc`
+- `ascendnpu-ir-feature-playbooks.mdc`

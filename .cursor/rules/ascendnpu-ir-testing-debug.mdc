@@ -1,0 +1,61 @@
+---
+description: AscendNPU-IR testing and debugging rule
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Testing & Debugging Rule
+
+Use when validating fixes/features or diagnosing regressions.
+
+## 1) Build and test baseline
+
+1. Bootstrap dependencies:
+   - `git submodule update --init --recursive`
+2. Build:
+   - `./build-tools/build.sh -o ./build --build-type Release --apply-patches` (first build)
+3. Main checks:
+   - `ninja check-bishengir`
+   - or `cmake --build . --target "check-mlir;check-bishengir"`
+
+## 2) Targeted test strategy
+
+Before full checks, run narrow scopes:
+
+- Tool behavior:
+  - `bishengir/test/bishengir-compile/**`
+  - `bishengir/test/bishengir-opt/**`
+- Dialect/conversion/pass:
+  - `bishengir/test/Dialect/**`
+  - `bishengir/test/Conversion/**`
+  - `bishengir/test/Pass/**`
+
+Use `llvm-lit` directly for focused iteration:
+
+- `./bin/llvm-lit ../bishengir/test/<subpath>`
+
+## 3) IR-level debugging flow
+
+1. Reproduce on minimal `.mlir`.
+2. Run single-pass transform:
+   - `bishengir-opt input.mlir --<pass>`
+3. Inspect pass boundary IR:
+   - `bishengir-compile ... --bishengir-print-ir-before=<pass> --bishengir-print-ir-after=<pass>`
+4. Use debug ops when runtime-level values are needed:
+   - HFusion `print`
+   - HIVM `debug`
+
+## 4) Runtime/perf triage tips
+
+- Hangs/timeouts:
+  - inspect sync-sensitive options and pass interactions.
+- Accuracy mismatch:
+  - compare intermediate tensors at pass boundaries and runtime.
+- Performance regression:
+  - inspect schedule/tiling decisions first, then profile (`msprof` / MindStudio path).
+
+## 5) Completion criteria
+
+- Repro test added/updated.
+- Fix validated with targeted tests.
+- No unrelated failures introduced in affected areas.
