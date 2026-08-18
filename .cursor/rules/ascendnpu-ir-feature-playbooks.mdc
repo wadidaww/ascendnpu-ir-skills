@@ -1,0 +1,72 @@
+---
+description: AscendNPU-IR feature-area implementation playbooks
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Feature Playbooks
+
+Use this rule for feature development work where multiple compiler layers are involved.
+
+## 1) HFusion AutoSchedule playbook
+
+Primary code area:
+
+- `bishengir/include/bishengir/Dialect/HFusion/Transforms/AutoSchedule/**`
+- `bishengir/lib/Dialect/HFusion/Transforms/AutoSchedule/**`
+
+Execution guide:
+
+1. Identify fusion kind and scheduling strategy selection path.
+2. Confirm tiling legality and alignment requirements.
+3. Verify generated transform operations match intended IR transformations.
+4. Add pass tests for scheduling result shape/layout/loop form.
+
+## 2) CV optimization and CVPipeline playbook
+
+Focus:
+
+- Cube/Vector mixed-kernel dependency handling
+- pipeline stage count and multi-buffering behavior
+
+Execution guide:
+
+1. Validate dependency graph legality for pipelining.
+2. Confirm synchronization and data handoff points.
+3. Check memory overhead from buffer expansion.
+4. Validate performance-sensitive transforms with representative cases.
+
+## 3) CustomOp playbook
+
+Focus:
+
+- HIVM custom/custom_macro operator path
+- attributes: core/pipe/mode/symbol/indexing/alignment/scratch buffers/sync metadata
+
+Execution guide:
+
+1. Validate required attrs are present and verified.
+2. Ensure lowering path resolves builtin vs user symbol correctly.
+3. Validate interactions with flatten/layout/memory/sync passes.
+4. Add tests for both success and unsupported/invalid attribute combinations.
+
+## 4) Tool option extension playbook
+
+Focus:
+
+- `bishengir-compile` option plumbing and pass pipeline behavior
+
+Execution guide:
+
+1. Add option with clear default behavior.
+2. Wire option to exactly intended pass gates.
+3. Add command-line tests for default/explicit/invalid cases.
+4. Update `docs/source/en/user_guide/compile_option.md`.
+
+## 5) Documentation playbook
+
+When behavior is user-visible:
+
+1. Update user guide and developer guide sections.
+2. Keep terminology aligned between architecture, options, and pass docs.
+3. If applicable, mirror updates in zh docs.

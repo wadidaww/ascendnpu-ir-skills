@@ -1,0 +1,58 @@
+---
+description: AscendNPU-IR dialect and conversion implementation rule
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Dialects & Conversions Rule
+
+Use when implementing new ops, lowering patterns, or pass-pipeline wiring.
+
+## 1) Dialect implementation checklist
+
+For a dialect change, update all applicable layers:
+
+1. Definition layer
+   - `bishengir/include/bishengir/Dialect/<Dialect>/**`
+   - `.td` op/type/attr/interface definitions
+2. Implementation layer
+   - `bishengir/lib/Dialect/<Dialect>/**`
+   - parser/printer/verifier/canonicalization/folding/builders
+3. Registration/build layer
+   - corresponding CMake targets and registration points
+4. Validation layer
+   - tests in `bishengir/test/Dialect/<Dialect>/**` and/or related `test/Pass/**`
+
+## 2) Conversion implementation checklist
+
+For conversion/lowering work:
+
+1. Declare pass/API in `include/bishengir/Conversion/<Flow>/**`
+2. Implement rewrite patterns and pass in `lib/Conversion/<Flow>/**`
+3. Wire into compile pipeline if user-facing (`tools/bishengir-compile/**`)
+4. Add tests in `bishengir/test/Conversion/**` and tool-level tests if option-driven
+5. Update developer docs (`docs/source/en/developer_guide/conversion/**`)
+
+## 3) Common conversion families in repo
+
+- Arith → Affine / HFusion / HIVMAVE / HIVMLLVM
+- Linalg / Tensor / Math → HFusion (or HIVM for tensor paths)
+- HFusion → HIVM / Vector
+- HIVMAVE / HIVM / Vector / GPU / Triton-related lowerings
+- Torch → HFusion / Symbol
+
+## 4) Correctness constraints
+
+- Keep type/shape semantics stable across rewrites.
+- Ensure legality checks reject unsupported patterns explicitly.
+- Ensure dynamic-shape behavior is tested (when supported).
+- For synchronization/memory-sensitive ops, validate pass interactions:
+  - block sync injection
+  - graph sync solver
+  - memory planning/layout/flatten passes
+
+## 5) Done criteria
+
+- Declaration + implementation + registration + tests are all present.
+- At least one positive and one negative/edge test for new behavior.
+- User-facing options/docs updated if pipeline behavior changed.

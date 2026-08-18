@@ -1,0 +1,54 @@
+---
+description: AscendNPU-IR performance analysis and tuning rule
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Performance & Profiling Rule
+
+Use this rule for performance regressions or optimization tasks.
+
+## 1) Baseline discipline
+
+1. pin workload, model shape, and environment setup
+2. verify functional correctness before measuring speed
+3. capture baseline latency/throughput metrics
+4. keep one-variable-at-a-time optimization changes
+
+## 2) Profiling flow
+
+1. collect runtime profile (`msprof` / MindStudio workflow)
+2. identify hotspot kernels/ops
+3. map hotspots to compiler IR stage/pass boundaries
+4. inspect generated IR around suspect boundaries
+5. adjust schedule/fusion/tiling/vectorization strategy
+
+## 3) Optimization levers in this stack
+
+- HFusion strategy and fusion boundary selection
+- tiling/blocking/alignment policy
+- CVPipeline stage depth and buffer expansion policy
+- vector/intrinsic lowering decisions in low-level stages
+- pass ordering where transforms interact non-linearly
+
+## 4) Regression triage map
+
+- latency spike with correct outputs:
+  - likely schedule/tiling or buffering policy regression.
+- throughput drop after option change:
+  - likely pipeline gate or default option drift.
+- perf variance instability:
+  - likely environment inconsistency or shape-dependent fallback path.
+
+## 5) Validation checklist
+
+1. keep targeted perf deltas with reproducible benchmark setup
+2. re-run focused correctness tests after each optimization step
+3. confirm no major regressions in neighboring workloads
+4. document option/default changes in user guide if relevant
+
+## 6) Done criteria
+
+- hotspot root cause identified and mapped to specific compiler stage
+- optimization change is localized and validated
+- correctness remains intact under touched workload paths

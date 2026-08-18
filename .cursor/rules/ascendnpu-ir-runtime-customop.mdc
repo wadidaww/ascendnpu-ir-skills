@@ -1,0 +1,52 @@
+---
+description: AscendNPU-IR runtime and custom-op integration rule
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Runtime & CustomOp Rule
+
+Use this rule when implementing or debugging runtime-sensitive behavior and custom operators.
+
+## 1) Scope and ownership
+
+- custom-op handling in HIVM-related dialect/conversion/pass code paths
+- symbol resolution and runtime metadata handoff logic
+- sync/memory/layout interactions that affect runtime correctness
+
+## 2) Custom-op implementation checklist
+
+1. define and verify required attributes explicitly
+2. validate attribute ranges/combinations and reject unsupported states
+3. ensure deterministic builtin vs user symbol selection behavior
+4. preserve compatibility with flatten/layout/memory/sync passes
+5. ensure diagnostics identify which attribute/symbol is invalid
+
+## 3) Runtime correctness checklist
+
+1. validate generated IR preserves dependency and synchronization semantics
+2. validate memory planning assumptions (alignment/scratch buffers/lifetimes)
+3. validate pipeline-stage interactions for mixed cube/vector kernels
+4. validate debug visibility through available print/debug operations
+
+## 4) Targeted test plan
+
+- positive path: valid custom-op attributes and symbol resolution
+- negative path: missing attrs / invalid combinations / unresolved symbols
+- integration path: custom-op across conversion/pipeline boundaries
+- runtime-sensitive path: schedule/layout/sync interactions
+
+## 5) Triage mapping
+
+- wrong symbol executed:
+  - inspect symbol resolution priority and lookup key construction.
+- runtime hang:
+  - inspect sync pass output and dependency graph edges.
+- memory corruption or shape mismatch:
+  - inspect layout transform assumptions and scratch-buffer constraints.
+
+## 6) Done criteria
+
+- custom-op schema and verifier updates are complete
+- runtime-sensitive interactions are validated with focused tests
+- diagnostics are explicit for unsupported runtime/custom-op conditions
