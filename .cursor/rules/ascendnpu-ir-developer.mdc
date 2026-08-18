@@ -1,0 +1,77 @@
+---
+description: AscendNPU-IR end-to-end development skill
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Development Skill (Cursor)
+
+Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
+
+## 1) Repository mental model
+
+- `bishengir/include/bishengir/**`: dialect/conversion/pass declarations, `.td` TableGen defs, public APIs.
+- `bishengir/lib/**`: implementations of dialects, conversions, passes, transforms, tools internals.
+- `bishengir/tools/**`: CLI drivers (`bishengir-compile`, `bishengir-opt`, LSP/tool generators).
+- `bishengir/test/**`: lit tests, tool tests, conversion/dialect/pass tests, Integration E2E.
+- `bishengir/python/**`: Python bindings and wheel packaging.
+- `build-tools/**`: build automation scripts (`build.sh`, `apply_patches.sh`, `build_wheel.sh`).
+- `docs/source/en/**` + `docs/source/zh_cn/**`: official user/developer/contribution documentation.
+- `third-party/**`: llvm-project / torch-mlir source dependencies.
+
+## 2) Compiler stack and roles
+
+- Entry stack: Torch-MLIR / Triton / TileLang / framework IR.
+- Mid-level: Linalg/Tensor + `HFusion` (fusion, scheduling, hardware-aware optimizations).
+- Low-level: `HIVM` (instruction-level mapping, memory/pipeline/sync control).
+- Backend handoff: low-level IR to downstream LLVM/lower binary generation path.
+
+## 3) Where to change code by task
+
+- New/extended op semantics:
+  - Add/update `.td` and headers in `include/bishengir/Dialect/<Dialect>/...`
+  - Add/update C++ impl in `lib/Dialect/<Dialect>/...`
+- New lowering path:
+  - Add conversion in `include/bishengir/Conversion/...` and `lib/Conversion/...`
+- New optimization pass:
+  - Define/register pass in `include/bishengir/Pass` or dialect transform headers
+  - Implement in `lib/Pass` or `lib/Dialect/<Dialect>/Transforms`
+- CLI/flag behavior:
+  - `tools/bishengir-compile` and/or `tools/bishengir-opt`
+  - Ensure docs update in `docs/source/en/user_guide/compile_option.md`
+- Custom operator behavior:
+  - Follow CustomOp model in HIVM path and related lowering/attributes handling
+  - Validate pass interactions (flatten, alignment, memory planning, layout transforms)
+
+## 4) Build, test, and debug workflow
+
+1. Initialize dependencies:
+   - `git submodule update --init --recursive`
+2. First build (recommended script):
+   - `./build-tools/build.sh -o ./build --build-type Release --apply-patches`
+3. Incremental build:
+   - `./build-tools/build.sh -o ./build --build-type Release`
+4. Run tests:
+   - `ninja check-bishengir` (in build dir), or
+   - `cmake --build . --target "check-mlir;check-bishengir"`
+5. Focused pass debug:
+   - `bishengir-opt input.mlir --<pass-name>`
+6. IR inspection:
+   - `bishengir-compile ... --bishengir-print-ir-before=<pass> --bishengir-print-ir-after=<pass>`
+
+## 5) Feature-specific guidance
+
+- HFusion AutoSchedule:
+  - Focus on `lib/Dialect/HFusion/Transforms/AutoSchedule/**`
+  - Respect alignment/tiling constraints and fusion-kind strategy selection.
+- CV optimization/CVPipeline:
+  - Validate cube/vector dependency legality, pipeline stage count, and buffering overhead.
+- Debug instrumentation:
+  - HFusion `print` and HIVM `debug` ops are first-line diagnostics for kernel issues.
+
+## 6) Documentation and quality gates
+
+- Keep docs aligned with behavior changes:
+  - Architecture/user options/developer guide pages under `docs/source/en/**` (and zh counterpart if needed).
+- Preserve LLVM style and existing conventions (`.clang-format`, `.clang-tidy`).
+- Keep changes scoped: avoid unrelated refactors in PRs.
