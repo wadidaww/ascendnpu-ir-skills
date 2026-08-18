@@ -1,0 +1,53 @@
+---
+description: AscendNPU-IR documentation governance and quality rule
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Docs Governance Rule
+
+Use this rule when updating user/developer docs or when behavior changes require documentation updates.
+
+## 1) Documentation ownership map
+
+- architecture and introduction:
+  - `docs/source/en/introduction/**`
+- user options and debugging:
+  - `docs/source/en/user_guide/compile_option.md`
+  - `docs/source/en/user_guide/debug_option.md`
+- developer internals:
+  - `docs/source/en/developer_guide/**`
+- contribution expectations:
+  - `docs/source/en/contributing_guide/contribute.md`
+
+Mirror in `docs/source/zh_cn/**` if project convention requires bilingual parity.
+
+## 2) Update checklist for behavior changes
+
+1. identify user-visible impact (flags, defaults, supported cases, diagnostics)
+2. update user guide text and examples first
+3. update developer internals for implementation/path changes
+4. verify pass/option names match actual CLI and code
+5. ensure no stale examples remain in nearby pages
+
+## 3) Quality checklist
+
+- terminology is consistent across architecture/options/features docs
+- headings and section depth follow existing style
+- commands/options are copy-paste valid
+- docs avoid claiming unsupported behavior
+
+## 4) Change classification guidance
+
+- option default change:
+  - update compile option docs and migration notes.
+- new pass or pipeline gate:
+  - update developer guide and option mapping docs.
+- new feature workflow:
+  - add playbook-style implementation and validation steps.
+
+## 5) Done criteria
+
+- all impacted docs are updated with consistent terminology
+- examples and command snippets align with current implementation
+- bilingual mirror performed when required by project process

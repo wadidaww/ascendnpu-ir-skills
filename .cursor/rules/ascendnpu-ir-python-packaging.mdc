@@ -1,0 +1,47 @@
+---
+description: AscendNPU-IR python bindings and packaging implementation rule
+globs:
+alwaysApply: false
+---
+
+# AscendNPU-IR Python & Packaging Rule
+
+Use this rule for changes in python bindings, module exposure, and wheel packaging.
+
+## 1) Ownership map
+
+- `bishengir/python/**`: binding glue and package layout.
+- `build-tools/build_wheel.sh`: wheel build flow.
+- build-system entries wiring python targets in CMake.
+
+## 2) Implementation checklist
+
+For python API changes:
+
+1. update binding declarations and exposed symbols in python ownership paths
+2. keep naming consistent with existing exported API surface
+3. ensure new entities are reachable from package import path
+4. update packaging/install rules if file layout changes
+5. update user docs if visible APIs or workflows change
+
+## 3) Validation checklist
+
+1. build through existing script path (`build-tools/build_wheel.sh` if used by repo flow)
+2. run minimal import smoke check for affected package/module path
+3. verify expected symbol/function/class is importable
+4. verify failure diagnostics are actionable when dependencies are missing
+
+## 4) Common failure signatures
+
+- `ImportError` / undefined symbol:
+  - missing binding registration or link dependency mismatch.
+- wheel produced but module missing:
+  - package manifest/install path mismatch.
+- runtime library lookup failure:
+  - target runtime dependency or search-path mismatch.
+
+## 5) Done criteria
+
+- binding updates are complete and discoverable by import path
+- packaging metadata/install rules remain consistent
+- focused python packaging validation completed for touched surface

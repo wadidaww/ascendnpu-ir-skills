@@ -91,3 +91,7 @@ Use this rule when working on `Ascend/AscendNPU-IR` code, features, or bugfixes.
 - `ascendnpu-ir-dialects-conversions.mdc`
 - `ascendnpu-ir-testing-debug.mdc`
 - `ascendnpu-ir-feature-playbooks.mdc`
+- `ascendnpu-ir-python-packaging.mdc`
+- `ascendnpu-ir-runtime-customop.mdc`
+- `ascendnpu-ir-performance-profiling.mdc`
+- `ascendnpu-ir-docs-governance.mdc`

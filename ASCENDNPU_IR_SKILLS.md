@@ -327,3 +327,137 @@ For each incoming task:
 - `.cursor/rules/ascendnpu-ir-dialects-conversions.mdc`
 - `.cursor/rules/ascendnpu-ir-testing-debug.mdc`
 - `.cursor/rules/ascendnpu-ir-feature-playbooks.mdc`
+- `.cursor/rules/ascendnpu-ir-python-packaging.mdc`
+- `.cursor/rules/ascendnpu-ir-runtime-customop.mdc`
+- `.cursor/rules/ascendnpu-ir-performance-profiling.mdc`
+- `.cursor/rules/ascendnpu-ir-docs-governance.mdc`
+
+## 12) Test taxonomy and selection strategy
+
+When selecting tests, prefer smallest sufficient scope:
+
+1. **Syntax/IR unit tests**
+   - lit tests for parser/printer/verifier and canonicalization.
+2. **Conversion legality tests**
+   - positive and negative lowering paths with explicit diagnostics.
+3. **Pipeline behavior tests**
+   - option-driven pass enable/disable and pass ordering assertions.
+4. **Integration tests**
+   - end-to-end compile workflows for representative model fragments.
+5. **Runtime-assisted checks**
+   - custom-op symbol resolution and runtime metadata conformance.
+
+Selection heuristic:
+
+- changed one pass pattern: target exact conversion/dialect lit path first
+- changed compile option: add/adjust tool option tests first
+- changed custom-op attrs/runtime path: combine dialect tests + integration path
+- changed python exposure: validate import path and wrapper expectations
+
+## 13) Failure signature to root-cause matrix
+
+Use this mapping to shorten triage time:
+
+- **"unknown op/type/attr"**
+  - likely missing registration or generated file wiring
+  - inspect dialect registration and CMake target dependencies
+- **"failed to legalize operation"**
+  - likely incomplete conversion coverage or legality mismatch
+  - inspect conversion target and dynamic legality predicates
+- **shape mismatch after lowering**
+  - likely rewrite pattern type/shape propagation bug
+  - inspect tensor/memref conversion boundaries and cast insertion
+- **pipeline option has no effect**
+  - likely option is parsed but not consumed in pass gate wiring
+  - inspect `bishengir-compile` option plumbing and pipeline builder
+- **runtime hang / timeout**
+  - likely synchronization placement or dependency graph issue
+  - inspect sync passes and CVPipeline stage interactions
+- **performance regression with correct outputs**
+  - likely schedule/tiling or buffering policy change
+  - inspect AutoSchedule strategy selection and memory overhead
+
+## 14) Python bindings and packaging ownership map
+
+Primary areas:
+
+- `bishengir/python/**`: python module sources, binding glue, package metadata.
+- `build-tools/build_wheel.sh`: wheel build orchestration.
+- root/build CMake files referencing python targets.
+
+Workflow:
+
+1. modify binding declarations and wrappers in python ownership paths
+2. ensure CMake target wiring includes new/changed sources
+3. build wheel through existing build script path
+4. validate import-time behavior with minimal smoke checks
+5. update docs when APIs or install behavior changes
+
+Failure checkpoints:
+
+- missing symbols during import: binding registration/export mismatch
+- runtime linker issues: target link dependency or RPATH mismatch
+- wheel missing files: packaging manifest/install rule mismatch
+
+## 15) Runtime and CustomOp integration checklist
+
+For runtime-sensitive operator work:
+
+1. verify attribute schema completeness and version compatibility
+2. verify symbol lookup rules (builtin priority vs user symbol path)
+3. verify memory/scratch buffer constraints under schedule transforms
+4. verify synchronization semantics across generated pipeline boundaries
+5. verify debug instrumentation for diagnosis in failure scenarios
+
+Recommended tests:
+
+- valid custom-op baseline
+- invalid attribute combinations (negative tests)
+- symbol-not-found path with clear diagnostic
+- schedule/layout interactions with custom-op in mixed pipelines
+
+## 16) Performance triage and optimization protocol
+
+Baseline discipline:
+
+1. establish baseline workload and environment config
+2. confirm functional equivalence before any perf claim
+3. profile hotspots with `msprof` / MindStudio workflow
+4. map hotspots back to IR stage and pass boundaries
+5. adjust schedule/tiling/vectorization with minimal targeted diffs
+6. re-run correctness + focused perf validation
+
+Common optimization levers in this stack:
+
+- fusion strategy selection at HFusion layer
+- tiling/blocking/alignment decisions
+- buffer reuse and pipeline stage depth
+- vectorization and low-level intrinsic mapping
+- pass ordering for interaction-sensitive transforms
+
+## 17) Documentation governance checklist
+
+Every user-visible behavior change should satisfy:
+
+1. update user-facing guide text (options, flags, expected behavior)
+2. update developer-facing internals if implementation model changed
+3. ensure terminology consistency across architecture, options, and features
+4. keep examples aligned with current syntax and pass names
+5. mirror zh docs when project convention requires bilingual parity
+
+## 18) PR acceptance checklist for Cursor-driven changes
+
+Before finalizing a change:
+
+1. Scope
+   - only issue-relevant files changed
+2. Completeness
+   - declarations + implementation + tests + docs where required
+3. Validation
+   - focused tests passed for touched domains
+4. Safety
+   - no accidental option default change outside requested scope
+5. Diagnostics
+   - failure messages remain actionable for unsupported cases
+6. Review readiness
+   - change summary maps directly to touched modules and tests
