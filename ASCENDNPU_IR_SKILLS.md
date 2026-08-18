@@ -99,14 +99,14 @@ Key knowledge:
 
 ## 4. Build and test playbook
 
-## Requirements
+### Requirements
 
 - CMake >= 3.28
 - Ninja >= 1.12.0
 - Clang recommended
 - CANN required for device/runtime and E2E device scenarios
 
-## Build commands
+### Build commands
 
 1. Submodules:
    - `git submodule update --init --recursive`
@@ -117,7 +117,7 @@ Key knowledge:
 4. Rebuild:
    - `./build-tools/build.sh -o ./build --build-type Release -r`
 
-## Test commands
+### Test commands
 
 - `ninja check-bishengir`
 - or `cmake --build . --target "check-mlir;check-bishengir"`
