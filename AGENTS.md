@@ -32,10 +32,22 @@ source ${PATH_TO_CANN}/cann/set_env.sh    # or ascend-toolkit/set_env.sh (older 
 
 ## Build
 
+Use the `build-bishengir` skill to get a runnable `bishengir-compile`:
+
+```bash
+scripts/build_bishengir.sh --source . -j 64 --enable-assertion   # verifies + logs the binary
+scripts/build_bishengir.sh --clone --mirror -o ./build -j 64     # clone first if needed
+```
+
+Or call the repo script directly:
+
 ```bash
 ./build-tools/build.sh -o ./build --build-type Debug --build-test --enable-assertion -j 64
 ./build-tools/build.sh -r -o ./build          # -r reconfigures from scratch
 ```
+
+`bishengir-compile` is a default target; install (which `--collect-binary` uses)
+runs only when NEITHER `--build-test` NOR `--fast-build` is set.
 
 ## Test (always run before declaring done)
 
@@ -60,6 +72,7 @@ Pass = exit 0, no failures; PASS/UNSUPPORTED/XFAIL are all fine.
 
 | Task | Skill rule | Script |
 |------|-----------|--------|
+| Build AscendNPU-IR → `bishengir-compile` | `build-bishengir` | `scripts/build_bishengir.sh` |
 | SSH to a server | `ssh-remote` | `scripts/ssh_run.sh` |
 | SCP a src→dst path | `scp-transfer` | `scripts/scp_transfer.sh` |
 | Run pytest + log | `pytest-runner` | `scripts/run_pytest.sh` |

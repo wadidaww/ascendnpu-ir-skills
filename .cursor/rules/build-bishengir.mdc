@@ -1,0 +1,71 @@
+---
+description: Build the AscendNPU-IR project to produce a runnable bishengir-compile binary, using the repo's build-tools/build.sh with the right flags. Use when the user asks to build AscendNPU-IR / BiShengIR, build bishengir-compile, or get a working compiler binary.
+globs:
+alwaysApply: false
+---
+
+# Skill: Build AscendNPU-IR → runnable `bishengir-compile`
+
+Use the helper `scripts/build_bishengir.sh`. It drives the repository's own
+`./build-tools/build.sh` with the flags required to install and collect a
+runnable `bishengir-compile`, then locates and smoke-tests the binary.
+
+## How to run
+
+```bash
+# In-tree (cwd is the AscendNPU-IR source), parallel, with assertions:
+scripts/build_bishengir.sh -j 64 --enable-assertion
+
+# Point at a source tree elsewhere and source the CANN env:
+scripts/build_bishengir.sh --source ~/AscendNPU-IR --cann /usr/local/Ascend -j 64
+
+# No source yet? clone it first (GitCode by default, --mirror for GitHub):
+scripts/build_bishengir.sh --clone --mirror -o ./build -j 64
+```
+
+Result: a verified `bishengir-compile` at `<collect-dir>/bin/bishengir-compile`
+(default collect-dir `<source>/bishengir-output`). The path is printed at the
+end and the whole run is logged to `logs/build_bishengir_<timestamp>.log`.
+
+## The flags that matter (and why)
+
+`build.sh` builds `bishengir-compile` as a **default target**, and only
+**installs** when NEITHER `--build-test` NOR `--fast-build` is given. The wrapper
+therefore:
+
+- omits `--build-test` and `--fast-build` → the install step runs;
+- passes `--collect-binary <dir>` → copies `bishengir-compile` (and
+  `bishengir-opt`, `hivmc`) into `<dir>/bin/`;
+- defaults `--build-type Release` (use `--build-type Debug --enable-assertion`
+  while developing).
+
+Wrapper options: `-s/--source`, `--clone`/`--repo`/`--mirror`, `-o/--build`,
+`--build-type`, `-j/--jobs`, `--enable-assertion`, `--collect-dir`/`--no-collect`,
+`--cann <path>`, `--c-compiler`/`--cxx-compiler`, `-r/--rebuild`,
+`--skip-submodules`, `--extra "<raw build.sh args>"`, `-l/--log`, `--dry-run`.
+
+## Agent guidance
+
+- **Preview first:** run with `--dry-run` to confirm the exact `build.sh` line
+  before kicking off a long build.
+- This is a heavy build (compiles LLVM/MLIR). Ensure `clang`, `cmake`, `ninja`,
+  ample disk and RAM are present; prefer a real build host (often reached via the
+  `ssh-remote` skill) over a laptop.
+- Submodules are initialized automatically; pass `--skip-submodules` only if the
+  tree is already populated.
+- If `bishengir-compile --help` returns nonzero after a successful build, it is
+  usually missing the CANN runtime env — re-run with `--cann <path>` or source
+  `set_env.sh` before using the binary.
+- Pass anything the wrapper doesn't expose via `--extra`, e.g.
+  `--extra "--python-binding --enable-cpu-runner"`.
+- Report the real result and the log path; never claim success without the
+  printed `bishengir-compile: <path>` line.
+
+## Examples
+
+```bash
+scripts/build_bishengir.sh --dry-run --clone --mirror -o ./build -j 96
+scripts/build_bishengir.sh --source ~/AscendNPU-IR --build-type Debug \
+  --enable-assertion --cann /usr/local/Ascend -j 64
+scripts/build_bishengir.sh -s ~/AscendNPU-IR --extra "--python-binding" -j 64
+```

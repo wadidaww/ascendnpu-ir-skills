@@ -14,6 +14,7 @@ remote servers and for developing the
   pytest-runner.mdc
   find-files.mdc
   grep-search.mdc
+  build-bishengir.mdc     build AscendNPU-IR → runnable bishengir-compile
   ascendnpu-ir-dev.mdc    always-applied AscendNPU-IR dev conventions/build/test
 scripts/                  Portable shell helpers the skills call
   ssh_run.sh
@@ -21,6 +22,7 @@ scripts/                  Portable shell helpers the skills call
   run_pytest.sh
   find_files.sh
   grep_search.sh
+  build_bishengir.sh
 AGENTS.md                 Portable short-form agent guide for AscendNPU-IR
 ```
 
@@ -34,6 +36,17 @@ AGENTS.md                 Portable short-form agent guide for AscendNPU-IR
   too. Every script supports `--dry-run` and `-h/--help`.
 
 ## Skills
+
+### Build AscendNPU-IR → runnable `bishengir-compile` — `scripts/build_bishengir.sh`
+```bash
+scripts/build_bishengir.sh --source . -j 64 --enable-assertion
+scripts/build_bishengir.sh --clone --mirror -o ./build -j 64 --cann /usr/local/Ascend
+```
+Drives the repo's `build-tools/build.sh` with the flags that actually install and
+collect the binary (omits `--build-test`/`--fast-build` so install runs; adds
+`--collect-binary`), then locates and smoke-tests `bishengir-compile`. Supports
+`--dry-run` to preview the exact build command. Output:
+`<collect-dir>/bin/bishengir-compile` (default `<source>/bishengir-output/bin`).
 
 ### SSH to a server — `scripts/ssh_run.sh`
 ```bash
