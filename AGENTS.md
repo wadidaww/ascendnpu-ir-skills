@@ -1,0 +1,69 @@
+# AGENTS.md — AscendNPU-IR development
+
+Guidance for AI coding agents (Cursor and compatible) working in this repo.
+The detailed, always-applied version lives in
+[`.cursor/rules/ascendnpu-ir-dev.mdc`](.cursor/rules/ascendnpu-ir-dev.mdc);
+this file is the short, portable summary.
+
+## What this project is
+
+**AscendNPU-IR** (aka **BiShengIR**) is an MLIR-based intermediate
+representation for compiling operators to Huawei Ascend NPUs.
+
+- Canonical: https://gitcode.com/Ascend/AscendNPU-IR
+- Mirror: https://github.com/Ascend/AscendNPU-IR
+- License: Apache-2.0
+
+## Layout
+
+- `bishengir/` — source. `include/bishengir/` (headers + TableGen `.td`),
+  `lib/` (mirrors include), `test/` (lit/FileCheck tests + `test/Integration/`),
+  `tools/` (`bishengir-opt`, `bishengir-compile`).
+- `build-tools/` — `build.sh` and patches.
+- `third-party/` — `llvm-project`, `torch-mlir` (git submodules).
+- In-house dialects: **HFusion, HIVM, HACC, Annotation, Scope** (+ extensions).
+
+## Setup
+
+```bash
+git submodule update --init --recursive
+source ${PATH_TO_CANN}/cann/set_env.sh    # or ascend-toolkit/set_env.sh (older CANN)
+```
+
+## Build
+
+```bash
+./build-tools/build.sh -o ./build --build-type Debug --build-test --enable-assertion -j 64
+./build-tools/build.sh -r -o ./build          # -r reconfigures from scratch
+```
+
+## Test (always run before declaring done)
+
+```bash
+cmake --build ./build --target "check-mlir;check-bishengir"   # lit regression
+./build/bin/llvm-lit bishengir/test                            # or a single .mlir file
+scripts/run_pytest.sh <file-or-dir> -l logs/run.log           # Python tests
+```
+
+Pass = exit 0, no failures; PASS/UNSUPPORTED/XFAIL are all fine.
+
+## Conventions
+
+- LLVM/MLIR style; `clang-format` with the repo config.
+- Ops live in ODS/TableGen `.td`; never hand-edit generated `*.inc`.
+- Keep `include/` and `lib/` trees in lockstep and update `CMakeLists.txt`.
+- Don't modify `third-party/` unless the task is a submodule bump/patch.
+- Report real build/test results; never skip or weaken tests to go green.
+- Don't open a PR unless asked.
+
+## Helper skills (in `.cursor/rules/` + `scripts/`)
+
+| Task | Skill rule | Script |
+|------|-----------|--------|
+| SSH to a server | `ssh-remote` | `scripts/ssh_run.sh` |
+| SCP a src→dst path | `scp-transfer` | `scripts/scp_transfer.sh` |
+| Run pytest + log | `pytest-runner` | `scripts/run_pytest.sh` |
+| Find files | `find-files` | `scripts/find_files.sh` |
+| Grep contents | `grep-search` | `scripts/grep_search.sh` |
+
+Run any script with `-h` for full usage.

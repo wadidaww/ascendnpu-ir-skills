@@ -1,0 +1,46 @@
+---
+description: Search file contents for a pattern (grep) across a tree, with glob/type filters and context. Use when the user asks to grep, search code, or find where something is defined/used.
+globs:
+alwaysApply: false
+---
+
+# Skill: Grep / content search
+
+Use the helper `scripts/grep_search.sh` to search file contents for a pattern.
+It uses ripgrep (`rg`) when available and falls back to `grep -r`, excluding
+`.git/`, `build/`, and `third-party/` by default.
+
+## How to run
+
+```bash
+# Basic regex search (current dir)
+scripts/grep_search.sh '<pattern>'
+
+# Search specific paths, case-insensitive
+scripts/grep_search.sh -i '<pattern>' <path> [<path> ...]
+```
+
+Key options: `-i/--ignore-case`, `-w/--word`, `-F/--fixed` (literal string),
+`-l/--files` (names only), `-c/--count`, `-C/--context <N>`,
+`-g/--glob <glob>` (repeatable), `-t/--type <type>` (ripgrep type, e.g. `cpp`,
+`python`, `cmake`), `--hidden`, `--no-ignore`, `--dry-run`.
+
+Exit code is the tool's own: `0` matches found, `1` no matches, `2` error.
+
+## Agent guidance
+
+- Use `-F` for literal symbols with regex metacharacters (`::`, `()`, `.`, `*`).
+- Use `-l` to get a file list first, then open the interesting files.
+- Narrow with `-g '*.cpp'`/`-g '*.h'` or `-t cpp` to avoid noise in big trees.
+- Exit code `1` means "no matches" — that is a normal result, not an error.
+- For finding files *by name* (not content), use the find skill
+  (`scripts/find_files.sh`).
+
+## Examples
+
+```bash
+scripts/grep_search.sh -i 'HIVM' bishengir/lib
+scripts/grep_search.sh -F 'createLowerToHACCPass' -g '*.cpp' -g '*.h'
+scripts/grep_search.sh -l -t cmake 'add_mlir_dialect'
+scripts/grep_search.sh -C 3 -w 'getResult' bishengir/lib/Dialect
+```

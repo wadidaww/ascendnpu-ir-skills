@@ -1,0 +1,46 @@
+---
+description: Find files within a directory by name, glob, extension, type, size, or age. Use when the user asks to locate/find a file or files in a directory or tree.
+globs:
+alwaysApply: false
+---
+
+# Skill: Find files in a directory
+
+Use the helper `scripts/find_files.sh` to locate files under a directory tree.
+It wraps `find` with sensible prunes (`.git/`, `build/`, `third-party/` skipped
+by default) so results stay focused on source.
+
+## How to run
+
+```bash
+# By extension (case-insensitive)
+scripts/find_files.sh -e mlir <dir>
+
+# By name glob
+scripts/find_files.sh -n 'CMakeLists.txt' <dir>
+scripts/find_files.sh -i '*lower*' <dir>      # case-insensitive glob
+```
+
+Key options: `-n/--name <glob>` (case-sensitive, repeatable),
+`-i/--iname <glob>` (case-insensitive, repeatable), `-e/--ext <ext>`,
+`-t/--type f|d|l` (default `f`), `-d/--maxdepth <N>`, `--size <spec>`
+(e.g. `+1M`), `--newer-than '<when>'` (e.g. `'1 day ago'`),
+`--exclude <glob>` (repeatable; `--exclude ''` disables default prunes),
+`-0/--print0`, `--dry-run`.
+
+## Agent guidance
+
+- Default prunes skip `build/` and `third-party/`; pass `--exclude ''` first if
+  you genuinely need to search those.
+- Combine with xargs for bulk ops: `scripts/find_files.sh -0 -e py . | xargs -0 wc -l`.
+- Use `-d/--maxdepth` to keep large trees fast when you only need top-level hits.
+- For content search (not names), use the grep skill (`scripts/grep_search.sh`)
+  instead.
+
+## Examples
+
+```bash
+scripts/find_files.sh -e mlir bishengir/test
+scripts/find_files.sh -n 'CMakeLists.txt' -d 3 .
+scripts/find_files.sh -i '*pass*' --exclude '*/docs/*' bishengir/lib
+```

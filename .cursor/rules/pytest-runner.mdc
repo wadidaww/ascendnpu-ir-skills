@@ -1,0 +1,49 @@
+---
+description: Run pytest on a given file or directory and record the output and errors to a log file. Use when the user asks to run tests, run pytest, or capture test output/failures to a log.
+globs:
+alwaysApply: false
+---
+
+# Skill: Run pytest and log results
+
+Use the helper `scripts/run_pytest.sh` to run pytest against a file or directory
+and capture the full combined stdout+stderr (including errors and tracebacks) to
+a log file. The script appends an `EXIT CODE: N` line and exits with pytest's own
+code, so the pass/fail result is unambiguous.
+
+## How to run
+
+```bash
+# Run a single test file; log auto-named under logs/
+scripts/run_pytest.sh path/to/test_file.py
+
+# Run a directory with an explicit log path
+scripts/run_pytest.sh path/to/tests/ -l logs/run.log
+```
+
+Key options: `-l/--log <file>` (default `logs/pytest_<target>_<timestamp>.log`),
+`-k/--filter <expr>`, `-m/--mark <expr>`, `-x/--exitfirst`, `-v/--verbose`,
+`-j/--jobs <N>` (needs pytest-xdist), `--no-tee` (log only, no console echo),
+`--dry-run`. Extra raw pytest args go after `--`.
+
+## Agent guidance
+
+- **Always note the log path** reported on stderr (`log: <path>`) and read it to
+  diagnose failures rather than re-running blindly.
+- The exit code is pytest's: `0` all passed, `1` tests failed, `5` no tests
+  collected, `2`/`4` usage/internal errors. Report failures honestly with the
+  relevant log excerpt.
+- Prefer `-x` while iterating on a single failing test, and `-k <expr>` to narrow
+  scope.
+- For flaky or slow suites, use `-j <N>` to parallelize when pytest-xdist is
+  available.
+- Do not edit tests to make them pass; fix the code under test or report the
+  real failure.
+
+## Examples
+
+```bash
+scripts/run_pytest.sh tests/test_lowering.py -x -v
+scripts/run_pytest.sh tests/ -k hivm -l logs/hivm.log
+scripts/run_pytest.sh tests/ -- --maxfail=3 --tb=short
+```

@@ -1,0 +1,166 @@
+---
+description: Project conventions, build, and test workflow for developing code in the AscendNPU-IR (BiShengIR) MLIR compiler repository.
+globs:
+alwaysApply: true
+---
+
+# AscendNPU-IR development guide
+
+This rule governs work on the **AscendNPU-IR** project (aka BiShengIR):
+an MLIR-based intermediate representation for compiling operators to Huawei
+Ascend NPUs.
+
+- Upstream (canonical): https://gitcode.com/Ascend/AscendNPU-IR
+- Mirror (reference / browsing): https://github.com/Ascend/AscendNPU-IR
+- License: Apache-2.0
+
+When the working tree is the AscendNPU-IR source (it has `bishengir/`,
+`build-tools/`, and `third-party/`), follow this guide. These companion skills
+are available for routine actions: `pytest-runner`, `find-files`, `grep-search`,
+`ssh-remote`, `scp-transfer` (see the other rules in `.cursor/rules/`).
+
+## Repository layout
+
+```
+bishengir/                 Primary source
+  include/bishengir/       Public headers (TableGen .td + C++ .h)
+    Dialect/               One dir per dialect (see below)
+    Conversion/ Transforms/ ...
+  lib/                     Implementation (.cpp), mirrors include/ layout
+  test/                    lit tests (*.mlir, RUN: lines) + test/Integration/
+  tools/                   Binaries: bishengir-opt, bishengir-compile, etc.
+  cmake/
+build-tools/               build.sh and patches
+third-party/               llvm-project, torch-mlir (git submodules)
+docker/  docs/
+CMakeLists.txt
+```
+
+### In-house dialects
+
+The Ascend-specific dialects (under `Dialect/`) are **HFusion, HIVM, HACC,
+Annotation, Scope** (plus HIVMAVE, HIVMRegbaseIntrins, AscendDPX and extensions
+like MemRefExt / MathExt / TritonExt). The rest are upstream MLIR dialects
+(Arith, Linalg, SCF, Tensor, Vector, MemRef, LLVMIR, Torch, Triton…).
+
+When adding to a dialect, keep the `include/` and `lib/` trees in lockstep:
+a dialect/op/pass has a `.td` (ODS) and/or `.h` under `include/bishengir/...`
+and a matching `.cpp` under `lib/...`, plus a `CMakeLists.txt` entry.
+
+## Environment
+
+Source the CANN environment before building/running NPU-dependent pieces:
+
+```bash
+# CANN 8.5.0+
+source ${PATH_TO_CANN}/cann/set_env.sh
+# earlier
+source ${PATH_TO_CANN}/ascend-toolkit/set_env.sh
+```
+
+Submodules are required:
+
+```bash
+git submodule update --init --recursive
+```
+
+## Build
+
+Prefer the build script:
+
+```bash
+# Release
+./build-tools/build.sh -o ./build --build-type Release
+# Debug + tests, parallel
+./build-tools/build.sh -o ./build --build-type Debug --build-test -j 64
+# Reconfigure from scratch (fixes "ninja: error: loading 'build.ninja'")
+./build-tools/build.sh -r -o ./build --build-type Debug
+```
+
+Common `build.sh` options: `-o/--build <path>`, `--build-type Release|Debug`,
+`-r/--rebuild`, `-j/--jobs N`, `--install-prefix <path>`,
+`--c-compiler`/`--cxx-compiler` (default clang/clang++), `--build-test`,
+`--python-binding`, `--enable-cpu-runner`, `--enable-assertion`,
+`--build-torch-mlir`, `--fast-build`, `--disable-ccache`,
+`--add-cmake-options "<opts>"`.
+
+Manual CMake+Ninja (equivalent):
+
+```bash
+mkdir -p build && cd build
+export LLVM_SOURCE_DIR="$(realpath ../third-party/llvm-project)"
+cmake ${LLVM_SOURCE_DIR}/llvm -G Ninja \
+    -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DLLVM_ENABLE_PROJECTS="mlir" \
+    -DLLVM_EXTERNAL_PROJECTS="bishengir" \
+    -DLLVM_EXTERNAL_BISHENGIR_SOURCE_DIR="$(realpath ..)" \
+    -DBSPUB_DAVINCI_BISHENGIR=ON
+ninja -j32
+```
+
+## Test
+
+Always run the relevant tests after a change and before declaring done.
+
+```bash
+# lit regression tests (from the build dir)
+cmake --build . --target "check-mlir;check-bishengir"
+# or run lit directly on a dir or a single file
+./bin/llvm-lit ../bishengir/test
+./bin/llvm-lit ../bishengir/test/bishengir-compile/commandline.mlir
+```
+
+A run passes when the exit code is 0 and no tests failed; PASS, UNSUPPORTED,
+and XFAIL are all acceptable outcomes.
+
+For Python-side tests, use the pytest skill so output and errors are logged:
+
+```bash
+scripts/run_pytest.sh <file-or-dir> -l logs/<name>.log
+```
+
+## Writing a lit / FileCheck test
+
+New compiler behavior needs a `*.mlir` test under `bishengir/test/` with a
+`RUN:` line driving `bishengir-opt`/`bishengir-compile` and `FileCheck`:
+
+```mlir
+// RUN: bishengir-opt %s -your-pass | FileCheck %s
+// CHECK-LABEL: func.func @example
+func.func @example(...) -> ... {
+  // CHECK: hivm.some_op
+  ...
+}
+```
+
+Mirror the conventions of neighboring tests in the same directory (check-prefix
+usage, `-split-input-file`, `expected-error` for diagnostics).
+
+## Coding conventions
+
+- Follow **LLVM/MLIR style** (it is an LLVM external project): `clang-format`
+  with the repo's `.clang-format`, LLVM naming (`CamelCase` types,
+  `camelCase` functions/variables), no exceptions/RTTI, prefer `llvm::` and
+  `mlir::` containers/utilities over STL where idiomatic.
+- Ops are defined in **ODS/TableGen** (`.td`); regenerate via the build, never
+  hand-edit generated `*.inc` files.
+- Keep passes small and composable; register them in the matching
+  `Passes.td`/`CMakeLists.txt`; document the pass with a summary/description.
+- Match the **snake_case** doc-file naming used under `docs/`.
+- Do not vendor changes into `third-party/` (llvm-project, torch-mlir) unless
+  the task is explicitly about a submodule bump/patch; patches live in
+  `build-tools/`.
+
+## Agent workflow
+
+1. Locate code with the `grep-search` / `find-files` skills before editing.
+2. Make the change in both `include/` (.td/.h) and `lib/` (.cpp) as needed,
+   plus `CMakeLists.txt`.
+3. Build with `build.sh` (Debug + `--enable-assertion` while developing).
+4. Add/adjust a lit test under `bishengir/test/`; run
+   `check-bishengir` (and `check-mlir` if you touched shared infra).
+5. Report the real build/test result (including the log path on failure); do
+   not weaken or skip tests to get green.
+6. Commit with a clear message; match existing commit style. Do not open a PR
+   unless the user asks.
