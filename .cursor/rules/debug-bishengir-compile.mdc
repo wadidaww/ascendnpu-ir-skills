@@ -1,0 +1,47 @@
+---
+description: Debugging type B — run bishengir-compile on a kernel.mlir with full IR tracing (--mlir-print-ir-before-all --mlir-print-ir-after-all, --save-temps, --verify-each) and split per-pass IR. Use when the user wants to debug bishengir-compile, reproduce a compile failure, or get the IR before/after each pass.
+globs:
+alwaysApply: false
+---
+
+# Skill: Debug `bishengir-compile` (type B)
+
+Use `scripts/debug_compile.sh` to run `bishengir-compile` on a `kernel.mlir`
+with `--mlir-print-ir-before-all --mlir-print-ir-after-all` (on by default),
+capture the whole log, and optionally split the dump into one `.mlir` per pass.
+
+## How to run
+
+```bash
+# Reproduce the exact compile that failed in E2E, with full IR trace + split
+scripts/debug_compile.sh kernel.mlir \
+    --cmd "--enable-hivm-compile --target=Ascend910B --block-dim=8" \
+    --split-dumps ir_dumps/
+
+# Take the captured compile flags from a file (e.g. produced by the E2E skill)
+scripts/debug_compile.sh kernel.mlir --cmd-file compile_cmd.txt --save-temps temps/
+```
+
+Key options: `-b/--bin`, `-c/--cmd "ARGS"` (repeatable), `--cmd-file FILE`,
+`--no-print-ir`, `--save-temps DIR`, `--verify-each`, `--debug`,
+`--debug-only X`, `--split-dumps DIR`, `-o/--output FILE`, `-l/--log FILE`,
+`--dry-run`.
+
+Relevant `bishengir-compile` flags (from `bishengir-compile --help`):
+`--mlir-print-ir-before-all`, `--mlir-print-ir-after-all`, `--save-temps=DIR`,
+`--verify-each`, `--print-pass-id`, `--inject-ir-before=`, `--inject-ir-after=`,
+`--inject-ir-from-file=`, `--save-linked-ir`, `--enable-debug-info`.
+
+The binary auto-resolves from `--bin`, `$BISHENGIR_COMPILE`, `$ASCENDNPU_IR_BIN`,
+`bishengir-output/bin`, `build/install/bin`, `build/bin`, then `PATH`.
+
+## Agent guidance
+
+- Always pass the **exact compile command** that failed (via `--cmd`/`--cmd-file`)
+  so you reproduce the real pipeline, then add tracing to see where it breaks.
+- `--split-dumps DIR` gives you the IR before/after each pass; read `index.txt`,
+  find the pass where the IR first goes wrong, then isolate it with the
+  `debug-bishengir-opt` skill on the corresponding `*_Before_*.mlir`.
+- Use `--save-temps` to keep intermediate artifacts; `--verify-each` to catch the
+  first pass that produces invalid IR.
+- Report the real exit code and log path; quote the failing pass and diagnostic.

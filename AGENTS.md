@@ -59,6 +59,17 @@ scripts/run_pytest.sh <file-or-dir> -l logs/run.log           # Python tests
 
 Pass = exit 0, no failures; PASS/UNSUPPORTED/XFAIL are all fine.
 
+## Debugging
+
+Three flows (see the `debug-*` skills):
+
+- **A — `bishengir-opt`:** `scripts/debug_opt.sh in.mlir -p "--your-pass" --around YourPass`
+- **B — `bishengir-compile`:** `scripts/debug_compile.sh kernel.mlir --cmd "<flags>" --split-dumps ir_dumps/`
+  (adds `--mlir-print-ir-before-all --mlir-print-ir-after-all`)
+- **C — end-to-end:** `scripts/debug_e2e.sh --config my-e2e.env --all`
+  (push built binaries → run remote test → extract kernel.mlir + compile cmd →
+  pull → re-compile locally with IR trace). Copy `docs/e2e.env.example` first.
+
 ## Conventions
 
 - LLVM/MLIR style; `clang-format` with the repo config.
@@ -73,6 +84,9 @@ Pass = exit 0, no failures; PASS/UNSUPPORTED/XFAIL are all fine.
 | Task | Skill rule | Script |
 |------|-----------|--------|
 | Build AscendNPU-IR → `bishengir-compile` | `build-bishengir` | `scripts/build_bishengir.sh` |
+| Debug `bishengir-opt` (type A) | `debug-bishengir-opt` | `scripts/debug_opt.sh` |
+| Debug `bishengir-compile` (type B) | `debug-bishengir-compile` | `scripts/debug_compile.sh` |
+| End-to-end debugging (type C) | `debug-e2e` | `scripts/debug_e2e.sh` |
 | SSH to a server | `ssh-remote` | `scripts/ssh_run.sh` |
 | SCP a src→dst path | `scp-transfer` | `scripts/scp_transfer.sh` |
 | Run pytest + log | `pytest-runner` | `scripts/run_pytest.sh` |

@@ -15,6 +15,9 @@ remote servers and for developing the
   find-files.mdc
   grep-search.mdc
   build-bishengir.mdc     build AscendNPU-IR → runnable bishengir-compile
+  debug-bishengir-opt.mdc      debug type A: bishengir-opt
+  debug-bishengir-compile.mdc  debug type B: bishengir-compile
+  debug-e2e.mdc                debug type C: end-to-end
   ascendnpu-ir-dev.mdc    always-applied AscendNPU-IR dev conventions/build/test
 scripts/                  Portable shell helpers the skills call
   ssh_run.sh
@@ -23,6 +26,12 @@ scripts/                  Portable shell helpers the skills call
   find_files.sh
   grep_search.sh
   build_bishengir.sh
+  debug_opt.sh
+  debug_compile.sh
+  debug_e2e.sh
+  split_ir_dump.py        splits a pass IR dump into one file per pass
+docs/
+  e2e.env.example         config template for debug_e2e.sh
 AGENTS.md                 Portable short-form agent guide for AscendNPU-IR
 ```
 
@@ -81,6 +90,39 @@ scripts/grep_search.sh -i 'HIVM' bishengir/lib
 scripts/grep_search.sh -F 'createLowerToHACCPass' -g '*.cpp' -g '*.h'
 ```
 Uses ripgrep when present, else `grep -r`; same default prunes.
+
+## Debugging skills
+
+Three debugging flows for the AscendNPU-IR compiler:
+
+### A — `bishengir-opt` — `scripts/debug_opt.sh`
+```bash
+scripts/debug_opt.sh in.mlir -p "--your-pass" --around YourPass
+scripts/debug_opt.sh in.mlir --print-after-all --split-dumps ir_dumps/
+```
+Runs `bishengir-opt` (standard MLIR opt driver) with `--debug`/`--mlir-print-ir-*`
+flags, logs everything, and can split per-pass IR into one file each.
+
+### B — `bishengir-compile` — `scripts/debug_compile.sh`
+```bash
+scripts/debug_compile.sh kernel.mlir --cmd "--enable-hivm-compile --target=Ascend910B" \
+    --split-dumps ir_dumps/
+```
+Runs `bishengir-compile` with `--mlir-print-ir-before-all --mlir-print-ir-after-all`
+(default on), so you reproduce a failing compile and get the IR before/after every
+pass. Feed a wrong pass's `*_Before_*.mlir` into flow A to isolate it.
+
+### C — end-to-end — `scripts/debug_e2e.sh`
+```bash
+cp docs/e2e.env.example my-e2e.env && $EDITOR my-e2e.env
+scripts/debug_e2e.sh --config my-e2e.env --all --dry-run   # preview
+scripts/debug_e2e.sh --config my-e2e.env --all             # run
+```
+Orchestrates the whole loop across a build host and a remote E2E server:
+**push** built artifacts → **run** the remote python test (pytest or `python file.py`)
+→ **extract** the `kernel.mlir` + `bishengir-compile` command from the log →
+**pull** the kernel back → **compile** locally with full IR trace. Phases can run
+individually (`run`, `extract pull compile`, …). Always `--dry-run` first.
 
 ## AscendNPU-IR development
 
