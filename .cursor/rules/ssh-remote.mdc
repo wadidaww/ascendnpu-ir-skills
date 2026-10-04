@@ -1,0 +1,48 @@
+---
+description: SSH into a server to run commands on a remote host. Use when the user asks to connect to, log into, or run something on a remote/target server.
+globs:
+alwaysApply: false
+---
+
+# Skill: SSH to a server
+
+Use the helper `scripts/ssh_run.sh` to open an interactive SSH session or run a
+one-off command on a remote host. Prefer it over hand-writing `ssh` lines so
+connection options (port, identity, jump host, timeouts) stay consistent.
+
+## How to run
+
+```bash
+# Interactive login shell
+scripts/ssh_run.sh -H <user>@<host>
+
+# Run a single remote command (everything after `--` runs on the server)
+scripts/ssh_run.sh -H <host> -u <user> -i <key> -- '<remote command>'
+```
+
+Key options: `-H/--host`, `-u/--user`, `-p/--port` (default 22),
+`-i/--identity <key>`, `-J/--jump <bastion>`, `-t` (force TTY),
+`-o KEY=VALUE` (extra `ssh -o` option, repeatable), `--dry-run`.
+
+Defaults can come from env vars: `SSH_HOST`, `SSH_USER`, `SSH_PORT`, `SSH_IDENTITY`.
+
+## Agent guidance
+
+- **Confirm the host before connecting** if it was not given explicitly; never
+  invent a hostname or IP.
+- Always check the exact command with `--dry-run` first when the remote command
+  is destructive (writes, deletes, deploys).
+- Quote the remote command as a single argument after `--` so local shell
+  expansion does not apply to remote variables/globs.
+- For an unreachable host, report the error; do not retry blindly or disable
+  host-key checking unless the user explicitly asks.
+- Chain remote steps with `&&` inside one quoted command to avoid repeated
+  logins, e.g. `-- 'cd /work && ./build-tools/build.sh -o ./build'`.
+
+## Examples
+
+```bash
+scripts/ssh_run.sh -H dev@10.0.0.5 -i ~/.ssh/id_ed25519 -- 'nvidia-smi; npu-smi info'
+scripts/ssh_run.sh -H target -J bastion.example.com -- 'cd /work && git pull'
+SSH_HOST=dev@10.0.0.5 scripts/ssh_run.sh -- 'uname -a'
+```

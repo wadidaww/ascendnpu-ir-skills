@@ -1,0 +1,51 @@
+---
+description: Copy files or directories to/from a remote server with scp given a source path and a destination path. Use when the user asks to upload, download, push, or pull files to/from a target server.
+globs:
+alwaysApply: false
+---
+
+# Skill: SCP file transfer
+
+Use the helper `scripts/scp_transfer.sh` to copy a **source path** to a
+**destination path** on (or from) a target server.
+
+## How to run
+
+```bash
+# Upload: SRC is local, DST is on the remote host (default direction)
+scripts/scp_transfer.sh -H <user>@<host> --to-remote -s <local-src> -d <remote-dst>
+
+# Download: SRC is on the remote host, DST is local
+scripts/scp_transfer.sh -H <user>@<host> --from-remote -s <remote-src> -d <local-dst>
+```
+
+Key options: `-H/--host`, `-u/--user`, `-p/--port` (default 22),
+`-i/--identity <key>`, `-J/--jump <bastion>`, `-s/--src`, `-d/--dst`,
+`-r/--recursive`, `-C/--compress`, `--dry-run`.
+
+Direction flags: `--to-remote` (default) or `--from-remote`.
+Defaults can come from env vars: `SSH_HOST`, `SSH_USER`, `SSH_PORT`, `SSH_IDENTITY`.
+
+## Agent guidance
+
+- **Always pass both `--src` and `--dst` explicitly**; this skill is for a given
+  source path and destination path.
+- Recursion is auto-enabled when uploading a local directory; pass `-r`
+  explicitly when downloading a remote directory.
+- Use `--dry-run` to show the exact `scp` command before overwriting anything at
+  the destination.
+- The script fails early if a local upload source does not exist, so a failure
+  usually means a wrong local path — check it rather than retrying.
+- Mind trailing slashes on directories, same as normal `scp`/`cp` semantics.
+
+## Examples
+
+```bash
+# upload a single MLIR file
+scripts/scp_transfer.sh -H dev@10.0.0.5 -i ~/.ssh/id_rsa --to-remote \
+  -s ./model.mlir -d /work/in/model.mlir
+
+# download a results directory
+scripts/scp_transfer.sh -H dev@10.0.0.5 --from-remote -r \
+  -s /work/out -d ./out
+```

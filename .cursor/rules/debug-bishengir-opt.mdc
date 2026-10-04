@@ -1,0 +1,46 @@
+---
+description: Debugging type A — run bishengir-opt with debug/print options (--debug, --mlir-print-ir-after-all, --mlir-print-ir-before/after=PASS, --verify-each) on an MLIR file to debug a single pass or pipeline. Use when the user wants to debug bishengir-opt, inspect IR around a pass, or dump IR per pass.
+globs:
+alwaysApply: false
+---
+
+# Skill: Debug `bishengir-opt` (type A)
+
+Use `scripts/debug_opt.sh` to run `bishengir-opt` with tracing on an `.mlir`
+input and capture the full log. `bishengir-opt` is a standard MLIR opt driver
+(`MlirOptMain`), so every `--mlir-print-ir-*`, `--debug`, `--debug-only=`,
+`--verify-each` flag works, plus AscendNPU-IR passes and `--target=`.
+
+## How to run
+
+```bash
+# Inspect IR before & after one pass
+scripts/debug_opt.sh in.mlir -p "--your-pass" --around YourPass
+
+# Full per-pass trace, split into one file per pass
+scripts/debug_opt.sh in.mlir -p "-pass-pipeline=builtin.module(cse)" \
+    --print-after-all --split-dumps ir_dumps/
+
+# LLVM debug output scoped to a DEBUG_TYPE, A5 target
+scripts/debug_opt.sh in.mlir --debug-only=hivm --target Ascend910_95 -- --mlir-timing
+```
+
+Key options: `-b/--bin`, `-p/--pass` (repeatable), `--target T`,
+`--print-after-all`, `--print-before-all`, `--print-after PASS`,
+`--print-before PASS`, `--around PASS`, `--print-after-change`,
+`--print-after-failure`, `--debug`, `--debug-only X`, `--verify-each`,
+`--split-dumps DIR`, `-o/--output FILE`, `-l/--log FILE`, `--dry-run`.
+
+The binary auto-resolves from `--bin`, `$BISHENGIR_OPT`, `$ASCENDNPU_IR_BIN`,
+`bishengir-output/bin`, `build/install/bin`, `build/bin`, then `PATH`.
+
+## Agent guidance
+
+- Threading is auto-disabled while printing IR so dumps stay ordered; pass
+  `--keep-threading` only if you need parallelism.
+- To debug a specific failing pass, use `--around <Pass>` (or `--print-before
+  <Pass>`), read the before/after IR, and narrow from there.
+- `--split-dumps` + the printed `index.txt` let you open the IR at each pass
+  boundary individually — ideal input for bisecting which pass corrupts the IR.
+- Report the real exit code and the log path; quote the relevant IR/diagnostic.
+- Anything the wrapper doesn't expose goes after `--` verbatim.

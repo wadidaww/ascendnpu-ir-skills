@@ -1,0 +1,70 @@
+---
+description: Debugging type C — end-to-end compilation debugging across a build host and a remote server (Triton-Ascend → BiShengIR → AI compute). Use when the user wants to debug an E2E runtime/precision error, reproduce a failing python E2E test on a server, or obtain the kernel.mlir and compile command for a failing compile.
+globs:
+alwaysApply: false
+---
+
+# Skill: End-to-end debugging (type C)
+
+Use `scripts/debug_e2e.sh` to drive the whole loop: push the locally-built
+artifacts to the E2E server, run the python test there, extract the failing
+`kernel.mlir` and its `bishengir-compile` command from the log, pull the kernel
+back, and re-compile it locally with full IR tracing — leaving you ready to
+debug a single pass with the `debug-bishengir-opt` skill.
+
+It orchestrates the other skills (`scp-transfer`, `ssh-remote`, `pytest-runner`
+semantics, `debug-bishengir-compile`), so configure once and run phases.
+
+## Phases (match the E2E steps)
+
+| Phase | Step | What it does |
+|-------|------|--------------|
+| `push`    | 0 | scp `bishengir-compile`, `hivmc`, `*.bc` to the server |
+| `run`     | 1-3 | ssh, `source set_env.sh`, run the test (pytest or `python file.py`), save the log |
+| `extract` | 4 | parse the log for the `kernel.mlir` path and the `bishengir-compile` command |
+| `pull`    | 5 | scp the `kernel.mlir` back to this host |
+| `compile` | 6 | local `bishengir-compile` with `--mlir-print-ir-before-all/-after-all`, split per-pass IR |
+| (then) | 7 | debug the offending pass with `scripts/debug_opt.sh` on the split IR |
+
+## How to run
+
+```bash
+# 1. Copy and edit the config (server, set_env.sh, test path, artifact dirs):
+cp docs/e2e.env.example my-e2e.env && $EDITOR my-e2e.env
+
+# 2. Preview the whole flow without touching anything:
+scripts/debug_e2e.sh --config my-e2e.env --all --dry-run
+
+# 3. Run it all, or one phase at a time:
+scripts/debug_e2e.sh --config my-e2e.env --all
+scripts/debug_e2e.sh --config my-e2e.env run
+scripts/debug_e2e.sh --config my-e2e.env extract pull compile
+```
+
+Every setting can also be a CLI flag (overrides the config): `--server USER@HOST`,
+`--port`, `--identity`, `--jump`, `--set-env PATH`, `--bin-dir`, `--lib-dir`,
+`--remote-bin`, `--remote-lib`, `--test PATH`, `--runner auto|pytest|python`,
+`--workdir`, `--pytest-args`, `--kernel-regex`, `--cmd-regex`, `--kernel PATH`,
+`--local-dir`. Output lands in `e2e-debug/<timestamp>/` (or `--local-dir`):
+`e2e_run.log`, `compile_cmd.txt`, `kernel.mlir`, `compile_debug.log`, `ir_dumps/`.
+
+## Agent guidance
+
+- **Ask the user for the connection details** you don't have — server IP/user,
+  the `set_env.sh` path, and the test path — then put them in the config. Never
+  invent a host or key path.
+- `--runner auto` decides on the server: if the test file has an
+  `if __name__ == "__main__":` block it runs `python <file>`, otherwise `pytest`.
+  Override with `--runner` when you know which is correct.
+- The `extract` phase is heuristic (it greps the log for the `bishengir-compile`
+  line and the `.mlir` argument). **Verify** the extracted `kernel.mlir` and
+  `compile_cmd.txt` look right; if the E2E harness formats its log differently,
+  pass `--kernel-regex` / `--cmd-regex`, or set `--kernel` directly.
+- Always `--dry-run` first — this phase does real ssh/scp and runs remote tests.
+- Steps 4 (log analysis) and 7 (per-pass root-causing) are where you reason:
+  read `e2e_run.log` for the runtime/precision error, then walk `ir_dumps/` to
+  find the first pass whose IR is wrong and isolate it with `debug-bishengir-opt`.
+- Push freshly-built artifacts (use the `build-bishengir` skill first) so the
+  server runs the binary you're debugging.
+- Report honestly: the remote test's real exit code, the extracted command, and
+  where the IR first diverges.
